@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HealthPro – Smart Health Monitoring</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    :root {
+      --bg: #faf9f7;
+      --surface: #f3f0eb;
+      --border: #e5e0d8;
+      --text: #1a1815;
+      --muted: #6b6560;
+      --subtle: #9a948c;
+      --accent: #2d6a4f;
+      --accent-light: #d8f3dc;
+      --radius: 10px;
+    }
+
+    body { font-family: 'Geist', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; line-height: 1.6; }
+
+    .sidebar-overlay { position: fixed; inset: 0; background: rgba(26,24,21,0.4); z-index: 999; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .sidebar-overlay.show { opacity: 1; pointer-events: all; }
+    .sidebar { position: fixed; top: 0; left: 0; width: 255px; height: 100vh; background: var(--bg); border-right: 1px solid var(--border); z-index: 1000; display: flex; flex-direction: column; padding: 28px 20px; transform: translateX(-100%); transition: transform 0.3s ease; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-header { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+    .sidebar-header .brand { font-family: 'Instrument Serif', serif; font-size: 1.25rem; }
+    .sidebar-close { position: absolute; top: 20px; right: 20px; background: none; border: 1px solid var(--border); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .sidebar-close:hover { background: var(--surface); }
+    .sidebar-nav { list-style: none; }
+    .sidebar-nav li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); cursor: pointer; font-size: 14px; color: var(--muted); transition: all 0.2s; margin-bottom: 2px; }
+    .sidebar-nav li:hover, .sidebar-nav li.active { background: var(--surface); color: var(--text); }
+    .sidebar-nav li.active { color: var(--accent); font-weight: 500; }
+    .sidebar-footer { margin-top: auto; font-size: 12px; color: var(--subtle); }
+
+    .header { position: sticky; top: 0; background: rgba(250,249,247,0.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 100; }
+    .header-inner { max-width: 1160px; margin: 0 auto; padding: 0 24px; height: 62px; display: flex; align-items: center; gap: 16px; }
+    .menu-btn { background: none; border: 1px solid var(--border); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 16px; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .menu-btn:hover { background: var(--surface); }
+    .brand-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .brand-logo .name { font-family: 'Instrument Serif', serif; font-size: 1.2rem; color: var(--text); }
+    .header-nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+    .header-nav a { text-decoration: none; color: var(--muted); font-size: 14px; padding: 6px 14px; border-radius: 8px; transition: all 0.2s; }
+    .header-nav a:hover, .header-nav a.active { color: var(--text); background: var(--surface); }
+    .auth-btns { display: flex; gap: 8px; margin-left: 12px; }
+    .btn-ghost { background: none; border: 1px solid var(--border); padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; transition: all 0.2s; font-family: 'Geist', sans-serif; }
+    .btn-ghost:hover { background: var(--surface); color: var(--text); }
+    .btn-solid { background: var(--text); border: 1px solid var(--text); padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--bg); cursor: pointer; transition: all 0.2s; font-family: 'Geist', sans-serif; }
+    .btn-solid:hover { background: #2e2b27; }
+
+    .hero { max-width: 1160px; margin: 0 auto; padding: 80px 24px 64px; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-light); color: var(--accent); padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; margin-bottom: 24px; }
+    .hero-badge .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .hero h1 { font-family: 'Instrument Serif', serif; font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 400; line-height: 1.15; margin-bottom: 18px; }
+    .hero h1 em { font-style: italic; color: var(--accent); }
+    .hero p { font-size: 15px; line-height: 1.7; color: var(--muted); margin-bottom: 32px; max-width: 440px; }
+    .hero-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hero-buttons .btn-solid, .hero-buttons .btn-ghost { padding: 12px 24px; font-size: 14px; }
+    .hero-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; }
+    .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+    .stat-card .stat-icon { font-size: 22px; margin-bottom: 6px; }
+    .stat-card .stat-value { font-size: 1.3rem; font-weight: 600; }
+    .stat-card .stat-label { font-size: 11px; color: var(--subtle); margin-top: 2px; }
+
+    .stats-strip { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 28px 24px; }
+    .stats-strip-inner { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
+    .strip-stat { text-align: center; padding: 16px; }
+    .strip-stat .num { font-family: 'Instrument Serif', serif; font-size: 2.1rem; color: var(--accent); }
+    .strip-stat .lbl { font-size: 13px; color: var(--subtle); margin-top: 4px; }
+
+    .section { max-width: 1160px; margin: 80px auto; padding: 0 24px; }
+    .section-header { text-align: center; margin-bottom: 48px; }
+    .section-tag { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+    .section-title { font-family: 'Instrument Serif', serif; font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 400; margin-bottom: 10px; }
+    .section-sub { font-size: 15px; color: var(--muted); max-width: 460px; margin: 0 auto; }
+
+    .steps-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+    .step-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; transition: border-color 0.2s; }
+    .step-card:hover { border-color: var(--accent); }
+    .step-number { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+    .step-icon { font-size: 26px; margin-bottom: 10px; }
+    .step-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    .step-card p { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+    .features-bg { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 80px 24px; }
+    .features-inner { max-width: 1160px; margin: 0 auto; }
+    .features-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+    .feature-card { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 22px; transition: all 0.2s; cursor: pointer; }
+    .feature-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .feature-icon { font-size: 24px; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+    .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+    .feature-link { font-size: 12px; font-weight: 600; color: var(--accent); text-decoration: none; }
+
+    .benefits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .benefit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; display: flex; gap: 14px; transition: border-color 0.2s; }
+    .benefit-card:hover { border-color: var(--accent); }
+    .benefit-icon { font-size: 22px; flex-shrink: 0; }
+    .benefit-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .benefit-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    .faq-bg { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 80px 24px; }
+    .faq-inner { max-width: 680px; margin: 0 auto; }
+    .faq-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; background: var(--bg); overflow: hidden; }
+    .faq-item.open { border-color: var(--accent); }
+    .faq-question { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .faq-chevron { font-size: 12px; color: var(--subtle); transition: transform 0.3s; }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); color: var(--accent); }
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s; font-size: 13px; color: var(--muted); line-height: 1.7; padding: 0 20px; }
+    .faq-item.open .faq-answer { max-height: 200px; padding: 0 20px 18px; }
+
+    .cta-wrap { max-width: 1160px; margin: 72px auto; padding: 0 24px 72px; }
+    .cta-card { background: var(--text); border-radius: 16px; padding: 56px; text-align: center; }
+    .cta-card h2 { font-family: 'Instrument Serif', serif; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 400; color: var(--bg); margin-bottom: 12px; }
+    .cta-card p { font-size: 15px; color: #9a948c; margin-bottom: 32px; }
+    .cta-buttons { display: flex; gap: 12px; justify-content: center; }
+    .btn-cta-primary { background: var(--bg); color: var(--text); border: 1px solid var(--bg); padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'Geist', sans-serif; }
+    .btn-cta-primary:hover { opacity: 0.9; }
+    .btn-cta-ghost { background: transparent; color: #9a948c; border: 1px solid #444; padding: 12px 28px; border-radius: 8px; font-size: 14px; cursor: pointer; font-family: 'Geist', sans-serif; transition: all 0.2s; }
+    .btn-cta-ghost:hover { border-color: #888; color: var(--bg); }
+
+    footer { background: var(--surface); border-top: 1px solid var(--border); padding: 32px 24px; text-align: center; }
+    footer .footer-brand { font-family: 'Instrument Serif', serif; font-size: 1rem; margin-bottom: 6px; }
+    footer p { font-size: 12px; color: var(--subtle); }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 48px; }
+      .hero-card { order: -1; }
+      .steps-grid, .features-grid { grid-template-columns: 1fr 1fr; }
+      .stats-strip-inner { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .header-nav { display: none; }
+      .steps-grid, .features-grid, .benefits-grid { grid-template-columns: 1fr; }
+      .auth-btns .btn-ghost { display: none; }
+      .cta-card { padding: 36px 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  <div class="sidebar-header"><span>⚕️</span><span class="brand">HealthPro</span></div>
+  <ul class="sidebar-nav">
+    <li class="active" onclick="scrollToSection('top'); closeSidebar()">🏠 Home</li>
+    <li onclick="scrollToSection('features'); closeSidebar()">✨ Features</li>
+    <li onclick="scrollToSection('how-it-works'); closeSidebar()">📊 How it Works</li>
+    <li onclick="scrollToSection('benefits'); closeSidebar()">💡 Benefits</li>
+    <li onclick="scrollToSection('faq'); closeSidebar()">❓ FAQ</li>
+  </ul>
+  <div class="sidebar-footer">© 2025 HealthPro. All rights reserved.</div>
+</aside>
+
+<header class="header" id="top">
+  <div class="header-inner">
+    <button class="menu-btn" onclick="openSidebar()">☰</button>
+    <a href="#" class="brand-logo"><span>⚕️</span><span class="name">HealthPro</span></a>
+    <nav class="header-nav">
+      <a href="#" class="active">Home</a>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it Works</a>
+      <a href="#benefits">Benefits</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="auth-btns">
+      <button class="btn-ghost" onclick="window.location.href='login.html'">Login</button>
+      <button class="btn-solid" onclick="window.location.href='signup.html'">Sign Up</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <div class="hero-badge"><span class="dot"></span> Smart Health Tracking</div>
+    <h1>Achieve Your <em>Ideal Health</em> with Smart Tracking</h1>
+    <p>Set your fitness goals, track calories, monitor vital signs, and get personalized insights — all in one intelligent health monitoring system.</p>
+    <div class="hero-buttons">
+      <button class="btn-solid" onclick="window.location.href='signup.html'">Start Your Journey</button>
+      <button class="btn-ghost" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">Explore Features</button>
+    </div>
+  </div>
+  <div class="hero-card">
+    <div class="hero-stats">
+      <div class="stat-card"><div class="stat-icon">💓</div><div class="stat-value">72</div><div class="stat-label">BPM Today</div></div>
+      <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-value">1,840</div><div class="stat-label">Cal Burned</div></div>
+      <div class="stat-card"><div class="stat-icon">💧</div><div class="stat-value">2.1L</div><div class="stat-label">Hydration</div></div>
+      <div class="stat-card"><div class="stat-icon">🥾</div><div class="stat-value">8,432</div><div class="stat-label">Steps</div></div>
+    </div>
+  </div>
+</section>
+
+
+
+<section class="section" id="how-it-works">
+  <div class="section-header">
+    <div class="section-tag">Process</div>
+    <h2 class="section-title">How HealthPro Works</h2>
+    <p class="section-sub">Get started in three simple steps and transform your health journey.</p>
+  </div>
+  <div class="steps-grid">
+    <div class="step-card"><div class="step-number">Step 01</div><div class="step-icon">📝</div><h3>Create Your Profile</h3><p>Sign up and enter your health details — age, weight, height, and fitness goals. Our website builds your personalized baseline.</p></div>
+    <div class="step-card"><div class="step-number">Step 02</div><div class="step-icon">📲</div><h3>Connect & Track</h3><p>Log meals, workouts, and vitals daily. Sync with your wearable devices for automatic real-time data collection.</p></div>
+    <div class="step-card"><div class="step-number">Step 03</div><div class="step-icon">🧠</div><h3>Get Smart Insights</h3><p>Receive AI-driven recommendations, trend analysis, and actionable insights tailored specifically to your health data.</p></div>
+  </div>
+</section>
+
+<div class="features-bg" id="features">
+  <div class="features-inner">
+    <div class="section-header">
+      <div class="section-tag">Features</div>
+      <h2 class="section-title">Smart Health Features</h2>
+      <p class="section-sub">Everything you need to take control of your health in one place.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card"><div class="feature-icon">🎯</div><h3>Goal Strategy</h3><p>Set your weight goal and receive a personalized calorie and macro plan calculated for your body type and pace.</p><a href="signup.html" class="feature-link">Get Started →</a></div>
+      <div class="feature-card"><div class="feature-icon">🥗</div><h3>Smart Nutrition</h3><p>Track calories with our food database and receive adaptive meal suggestions that match your dietary preferences.</p><a href="signup.html" class="feature-link">Get Started →</a></div>
+      <div class="feature-card"><div class="feature-icon">📈</div><h3>Progress Reports</h3><p>Analyze trends, track milestones visually, and celebrate achievements with detailed weekly and monthly reports.</p><a href="signup.html" class="feature-link">Get Started →</a></div>
+      <div class="feature-card"><div class="feature-icon">💓</div><h3>Vital Monitoring</h3><p>Track heart rate, blood pressure, oxygen saturation, and sleep patterns — all in real time.</p><a href="signup.html" class="feature-link">Get Started →</a></div>
+      <div class="feature-card"><div class="feature-icon">🏋️</div><h3>Workout Planner</h3><p>Access hundreds of exercise routines designed by experts and adapted to your current fitness level.</p><a href="signup.html" class="feature-link">Get Started →</a></div>
+      <div class="feature-card"><div class="feature-icon">😴</div><h3>Sleep Analysis</h3><p>Understand your sleep cycles, identify patterns, and get recommendations to improve your sleep quality.</p><a href="signup.html" class="feature-link">Get Started →</a></div>
+    </div>
+  </div>
+</div>
+
+<section class="section" id="benefits">
+  <div class="section-header">
+    <div class="section-tag">Benefits</div>
+    <h2 class="section-title">Why Choose HealthPro?</h2>
+    <p class="section-sub">Trusted by thousands of users to make real, lasting health improvements.</p>
+  </div>
+  <div class="benefits-grid">
+    <div class="benefit-card"><div class="benefit-icon">🤖</div><div><h3>AI-Powered Personalization</h3><p>Our machine learning engine adapts to your habits and continuously refines recommendations based on your real data.</p></div></div>
+    <div class="benefit-card"><div class="benefit-icon">🔒</div><div><h3>Private & Secure</h3><p>Your health data is encrypted end-to-end. We never sell your information or share it without your explicit consent.</p></div></div>
+    <div class="benefit-card"><div class="benefit-icon">📱</div><div><h3>Works Everywhere</h3><p>Seamlessly available on web, iOS, and Android. Your data stays synced across all your devices in real time.</p></div></div>
+    <div class="benefit-card"><div class="benefit-icon">👩‍⚕️</div><div><h3>Clinically Informed</h3><p>Built in collaboration with dietitians, cardiologists, and sports medicine doctors to ensure safe, evidence-based guidance.</p></div></div>
+  </div>
+</section>
+
+<div class="faq-bg" id="faq">
+  <div class="faq-inner">
+    <div class="section-header">
+      <div class="section-tag">FAQ</div>
+      <h2 class="section-title">Common Questions</h2>
+      <p class="section-sub">Everything you need to know before getting started.</p>
+    </div>
+    <div id="faqList"></div>
+  </div>
+</div>
+
+<div class="cta-wrap">
+  <div class="cta-card">
+    <h2>Ready to Transform Your Health?</h2>
+    <p>Join thousands of people already taking control of their wellbeing.</p>
+    <div class="cta-buttons">
+      <button class="btn-cta-primary" onclick="window.location.href='signup.html'">Create Free Account</button>
+      <button class="btn-cta-ghost" onclick="window.location.href='login.html'">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-brand">⚕️ HealthPro</div>
+  <p>© 2025 HealthPro. Built for a healthier world.</p>
+</footer>
+
+<script>
+  function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('show'); document.body.style.overflow='hidden'; }
+  function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); document.body.style.overflow=''; }
+  function scrollToSection(id) { if(id==='top'){window.scrollTo({top:0,behavior:'smooth'});return;} const el=document.getElementById(id); if(el)el.scrollIntoView({behavior:'smooth'}); }
+  const obs = new IntersectionObserver(entries=>{ entries.forEach(e=>{ if(!e.isIntersecting)return; obs.unobserve(e.target); const target=parseFloat(e.target.dataset.target),isF=target%1!==0,dur=1400,start=performance.now(); function tick(now){const p=Math.min((now-start)/dur,1),ease=1-Math.pow(1-p,3),val=target*ease; e.target.textContent=isF?val.toFixed(1):Math.floor(val).toLocaleString(); if(p<1)requestAnimationFrame(tick);} requestAnimationFrame(tick); }); },{threshold:0.5});
+  document.querySelectorAll('.num[data-target]').forEach(c=>obs.observe(c));
+  const faqs=[{q:"Is HealthPro free to use?",a:"HealthPro offers a free tier with core tracking features. Premium plans unlock AI insights, advanced reports, and device integrations."},{q:"How accurate is the calorie tracking?",a:"Our food database contains over 2 million items verified by nutritionists. Calorie estimates are within ±5% for most foods."},{q:"Can I sync my fitness tracker or smartwatch?",a:"Yes! HealthPro integrates with Apple Watch, Fitbit, Garmin, Samsung Galaxy Watch, and more via our device sync feature."},{q:"Is my health data private and secure?",a:"Absolutely. All data is encrypted with AES-256 at rest and TLS in transit. We are HIPAA-compliant and never sell your data."},{q:"Can I cancel my subscription at any time?",a:"Yes, you can cancel anytime from your account settings. There are no cancellation fees and your data remains accessible."}];
+  const faqList=document.getElementById('faqList');
+  faqs.forEach(({q,a})=>{ const item=document.createElement('div'); item.className='faq-item'; item.innerHTML=`<div class="faq-question"><span>${q}</span><span class="faq-chevron">▾</span></div><div class="faq-answer">${a}</div>`; item.querySelector('.faq-question').addEventListener('click',()=>{ const isOpen=item.classList.contains('open'); document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open')); if(!isOpen)item.classList.add('open'); }); faqList.appendChild(item); });
+  const ro=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';ro.unobserve(e.target);}});},{threshold:0.1});
+  document.querySelectorAll('.step-card,.feature-card,.benefit-card,.strip-stat').forEach(el=>{el.style.opacity='0';el.style.transform='translateY(20px)';el.style.transition='opacity 0.5s ease,transform 0.5s ease';ro.observe(el);});
+</script>
+</body>
+</html>
